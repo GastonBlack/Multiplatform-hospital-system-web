@@ -1,5 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Full navigation revalidates the session on every section change. */
 import { requireAdmin } from "@/lib/auth/guards.server";
+import { Hospital, LogOut } from "lucide-react";
+import { AdminNavigation } from "../components/admin-navigation";
 
 export default async function AdminLayout({
   children,
@@ -8,25 +10,24 @@ export default async function AdminLayout({
 }) {
   await requireAdmin();
   return (
-    <div className="grid min-h-svh grid-cols-[220px_1fr] max-[600px]:grid-cols-1">
-      <aside className="border-r border-[#e7e9ee] bg-[#fafbfc] p-7 max-[600px]:border-r-0 max-[600px]:border-b max-[600px]:p-5">
+    <div className="grid min-h-svh grid-cols-[244px_minmax(0,1fr)] max-[600px]:grid-cols-1">
+      <aside className="flex flex-col border-r border-[#e6e9f0] bg-white px-6 py-8 max-[600px]:border-r-0 max-[600px]:border-b max-[600px]:p-5">
         <a
-          className="flex items-center gap-2.5 text-xl font-extrabold tracking-[-0.03em] text-[#17191d]"
+          className="inline-flex w-fit flex-col items-center gap-1"
           href="/"
+          aria-label="MHS home"
         >
-          + MHS
+          <Hospital aria-hidden="true" className="size-12 fill-[#142375] text-white" />
+          <span className="text-sm font-extrabold tracking-wide text-[#242424]">MHS</span>
         </a>
-        <p className="mt-6 mb-4 text-xs text-[#626a78]">Administration</p>
-        <nav
-          aria-label="Administration"
-          className="flex flex-col flex-wrap items-start gap-6 text-[13px] text-[#4d5360] [&_a:hover]:text-[#163f73] [&_a:hover]:underline max-[600px]:flex-row max-[600px]:gap-4"
-        >
-          <a href="/admin">Dashboard</a>
-          <a href="/admin/doctors">Doctors</a>
-          <a href="/admin/staff">Staff</a>
-          <a href="/profile">My profile</a>
-          <a href="/">Back to site</a>
-        </nav>
+        <div className="mt-10">
+          <AdminNavigation />
+        </div>
+        <div className="mt-auto pt-10">
+          <a href="/" className="inline-flex min-h-10 items-center gap-3 pl-5 text-xs font-medium text-[#626a78] hover:text-[#142375]">
+            <LogOut aria-hidden="true" size={16} strokeWidth={1.7} /> Back to site
+          </a>
+        </div>
       </aside>
       <main id="contenido" className="p-8 max-[600px]:p-4">
         {children}

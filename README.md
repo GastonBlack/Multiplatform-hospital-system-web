@@ -48,6 +48,7 @@ src/app/
     types.ts                  Form feedback types
     login/page.tsx
     register/page.tsx
+    session/refresh/          Server Action and session-renewal page
   (site)/                     Header, empty home and protected profile
     components/               Header and profile presentation
     page.tsx
@@ -65,6 +66,7 @@ src/features/
 src/lib/
   api/                        Server-only HTTP client and safe API errors
   auth/                       Cookie, backend session checks and guards
+src/proxy.ts                  Forwards a safe return path; never grants access
 tests/                        Local tests; fetch mocks exist only in tests
 ```
 
@@ -77,12 +79,15 @@ Route groups do not appear in URLs. Public and administrative routes use English
 - Sign-in for patients, doctors, receptionists and administrators sends only `{ nationalIdentificationNumber, password }` to `POST /api/auth/login`. The ID is a string of exactly eight ASCII digits, preserving leading zeros and rejecting spaces, dots and hyphens. Email is required for registration, but cannot be used to sign in. Invalid format returns 400; incorrect credentials return 401.
 - Patient registration preserves its existing body. Doctor/staff registration types also require `nationalIdentificationNumber`; their forms are not implemented yet.
 - Server Actions validate all form values. Passwords are never trimmed. Dates use America/Montevideo for future-date validation.
-- Only the access token is stored in `mhs_access`: HttpOnly, SameSite=Lax, Path=/, Secure in production and expiry from `accessTokenExpiresAt`. Tokens are never passed through component props, action responses, logs, localStorage or sessionStorage. The refresh token is discarded; expired access requires a new sign-in.
+- Tokens are stored only in `mhs_access` and `mhs_refresh` cookies: HttpOnly, SameSite=Lax, Path=/ and Secure in production. Their expiration dates come from `accessTokenExpiresAt` and `sessionExpiresAt`, respectively. Tokens are never passed through component props, action responses, logs, localStorage or sessionStorage.
+- When a page request needs a session and access has expired, the server redirects to `/session/refresh`. A same-origin Server Action calls `POST /api/auth/refresh` and writes both replacement cookies before returning to the requested page. Server Components do not mutate cookies. Renewal happens on demand, rather than keeping an inactive tab alive with polling.
+- The backend rotates refresh tokens and revokes sessions when a consumed token is reused. The renewal page uses the browser's Web Locks API to serialize renewal across tabs; the action rechecks the latest cookies before rotating. This requires a modern browser in a secure context (HTTPS or localhost). Unsupported browsers request a new sign-in rather than rotating unsafely. No session tokens or authorization decisions are cached between users.
+- Refresh does not extend the backend's absolute session lifetime: currently seven days from login, with access tokens lasting up to 15 minutes. Invalid/revoked refresh tokens clear both cookies and request a new sign-in (Admin still resolves to page not found without authorization). Connection errors retain the cookies and show a retry action.
 - `requireSession()` validates the current session with the backend using `cache: no-store`. A cookie alone does not establish a valid session. Every account status can view its own profile.
 - `requireAdmin()` requires a valid backend session, `role === "Administrator"` and active account status (`2`). Each administrative page calls the guard. Every future protected administrative action must do the same; the API remains the final authority.
-- Administrative links use full-page navigation to request a fresh backend check for every section. Permissions are not persistently cached or inferred from Staff profile type or decoded JWT claims.
+- Administrative sections use App Router client-side navigation with `prefetch={false}`. The sidebar stays mounted while the right-hand page changes and shows its own loading state. Each dynamic page still calls `requireAdmin()` on the server; shared-layout checks are not the only authorization boundary. Permissions are not persistently cached or inferred from Staff profile type or decoded JWT claims. The router uses its default zero stale time for dynamic pages; browser back/forward may restore client-side UI, so API operations must always validate current permissions.
 - Protected profile routes redirect missing/invalid sessions to sign-in. Admin routes show page not found for missing/invalid sessions or insufficient permissions. Connection failures never grant access. With streaming, Next.js may return HTTP 200 while rendering a not-found screen or meta redirect.
-- Sign-out revokes the backend session before deleting the cookie. Connection errors retain the cookie for a retry; a 401 allows an already-invalid session cookie to be cleared.
+- Sign-out obtains usable access (refreshing if needed), revokes the backend session and then deletes both cookies. Connection errors retain the cookies for retry; already-invalid sessions are cleared.
 - ValidationProblemDetails, custom ErrorResponse and empty/non-JSON error responses are handled. User-facing errors are in English and do not expose backend development diagnostics.
 
 ## Backend role contract
@@ -106,12 +111,14 @@ ESLint runs separately from the Next.js 16 build. Typecheck generates route type
 
 Tests cover absent/revoked sessions, missing roles, receptionists, inactive administrators, confirmed active administrators, repeated permission checks and connection failures. They also cover API error formats, empty responses, login request fields, 400/401 handling, registration validation and unchanged passwords/leading zeros.
 
+Renewal tests cover cookie security and expiry, rotated-token replacement, expired/missing access, invalid refresh tokens, connection errors, malformed responses, duplicate renewal avoidance and safe return paths. HTTP checks against Next.js verified renewal redirects, cookie cleanup, no tokens in action results and rejection of cross-origin Server Action requests. Positive refresh against the real backend with an expired test-account access token remains an integration check; mocked tests do not enable a fake application authentication mode.
+
 Integration checklist with a running API and test accounts: TLS, patient registration, duplicate handling, sign-in and cookie attributes, real profile data, expiry, sign-out revocation, active-administrator access, and rejection after a role or account-status change. These checks are separate from the mocked API tests.
 
 Use `npm audit` to review dependency advisories and `npm audit --omit=dev` for production dependencies. Review version compatibility before applying major upgrades.
 
 ## Current scope
 
-Header-only home, compact sign-in and patient registration, protected account profile, sign-out and initial protected Admin sections. No appointments, availability, specialties, refresh automation or complete administrative registration forms are implemented.
+Header-only home, compact sign-in and patient registration, automatic on-demand session renewal, protected account profile, sign-out and initial protected Admin sections. No appointments, availability, specialties or complete administrative registration forms are implemented.
 
-The appointment and medical-history navigation buttons are disabled placeholders. The sign-in form's Remember me control does not change session persistence, and the Forgot Password link targets a recovery route that is not implemented. Password recovery and optional persistent sessions remain pending.
+The appointment and medical-history navigation buttons are disabled placeholders. The sign-in form's Remember me control does not change session persistence: cookies currently expire at the backend-provided dates for all sign-ins. The Forgot Password link targets a recovery route that is not implemented. Password recovery and distinct Remember me behavior remain pending.

@@ -6,7 +6,13 @@ import {
   registerPatient,
   revokeSession,
 } from "@/features/auth/api.server";
-import { clearToken, readToken, saveToken } from "@/lib/auth/session.server";
+import {
+  clearTokens,
+  readToken,
+  readRefreshToken,
+  saveTokens,
+} from "@/lib/auth/session.server";
+import { resolveSessionTokens } from "@/lib/auth/renewal.server";
 import { ApiError } from "@/lib/api/errors";
 import { loginValues, validateForm } from "./validation";
 import type { FormState } from "./types";
@@ -34,7 +40,7 @@ export async function loginAction(
     return { errors, message: "Please check the highlighted fields." };
   try {
     const response = await login(loginValues(values));
-    await saveToken(response.accessToken, response.accessTokenExpiresAt);
+    await saveTokens(response);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       return { message: "Incorrect ID or password. Please try again." };
@@ -64,7 +70,20 @@ export async function registerAction(
 }
 
 export async function logoutAction(): Promise<FormState> {
-  const token = await readToken();
+  let token: string | undefined;
+  try {
+    const result = await resolveSessionTokens(
+      await readToken(),
+      await readRefreshToken(),
+    );
+    if (result.kind === "current") token = result.accessToken;
+    if (result.kind === "renewed") {
+      await saveTokens(result.tokens);
+      token = result.tokens.accessToken;
+    }
+  } catch (error) {
+    return failure(error);
+  }
   if (token) {
     try {
       await revokeSession(token);
@@ -75,6 +94,6 @@ export async function logoutAction(): Promise<FormState> {
       }
     }
   }
-  await clearToken();
+  await clearTokens();
   redirect("/login");
 }

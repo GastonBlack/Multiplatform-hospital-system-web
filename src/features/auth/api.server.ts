@@ -12,6 +12,11 @@ import { isSession } from "@/lib/auth/policy";
 
 export const login = (body: LoginRequest) =>
   api<AuthenticationResponse>("/api/auth/login", { method: "POST", body });
+export const refresh = (refreshToken: string) =>
+  api<AuthenticationResponse>("/api/auth/refresh", {
+    method: "POST",
+    body: { refreshToken },
+  });
 export const registerPatient = (body: RegisterPatientRequest) =>
   api<RegisterPatientResponse>("/api/patients/register", {
     method: "POST",

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Hospital } from "lucide-react";
-import { getValidatedSession } from "@/features/auth/api.server";
-import { readToken } from "@/lib/auth/session.server";
+import { getRenderSession } from "@/lib/auth/render-session.server";
 import { ApiError } from "@/lib/api/errors";
 import { AccountOptions } from "./account-options";
 import { isActiveAdmin } from "@/lib/auth/policy";
@@ -11,9 +10,9 @@ export async function SiteHeader() {
   let canAdmin = false;
   let unavailable = false;
   try {
-    const session = await getValidatedSession(await readToken());
-    authenticated = !!session;
-    canAdmin = isActiveAdmin(session);
+    const auth = await getRenderSession();
+    authenticated = !!auth;
+    canAdmin = isActiveAdmin(auth?.session);
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     unavailable = true;
@@ -41,14 +40,27 @@ export async function SiteHeader() {
             </small>
           </span>
         </Link>
-        <nav aria-label="Main navigation" className="col-span-full row-start-2 flex flex-wrap items-center justify-center gap-x-1 gap-y-2 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+        <nav
+          aria-label="Main navigation"
+          className="col-span-full row-start-2 flex flex-wrap items-center justify-center gap-x-1 gap-y-2 lg:col-span-1 lg:col-start-2 lg:row-start-1"
+        >
           <Link href="/" className={`${navigationLink} text-lg font-bold`}>
             Home
           </Link>
-          <button type="button" disabled title="Coming soon" className={`${navigationLink} cursor-not-allowed text-sm opacity-60`}>
+          <button
+            type="button"
+            disabled
+            title="Coming soon"
+            className={`${navigationLink} cursor-not-allowed text-sm opacity-60`}
+          >
             Book an appointment
           </button>
-          <button type="button" disabled title="Coming soon" className={`${navigationLink} cursor-not-allowed text-sm opacity-60`}>
+          <button
+            type="button"
+            disabled
+            title="Coming soon"
+            className={`${navigationLink} cursor-not-allowed text-sm opacity-60`}
+          >
             Medical history
           </button>
         </nav>

@@ -41,7 +41,7 @@ export async function loginAction(
     }
     return failure(error);
   }
-  redirect("/perfil");
+  redirect("/profile");
 }
 
 export async function registerAction(

@@ -51,13 +51,13 @@ src/app/
   (site)/                     Header, empty home and protected profile
     components/               Header and profile presentation
     page.tsx
-    perfil/page.tsx
+    profile/page.tsx
   (admin)/
     components/               Administrative presentation
     admin/                    Layout and protected Server Component pages
       page.tsx
-      medicos/page.tsx
-      personal/page.tsx
+      doctors/page.tsx
+      staff/page.tsx
 src/features/
   auth/                       Authentication API calls and request/response types
   users/                      Account profile API calls and response types
@@ -68,7 +68,7 @@ src/lib/
 tests/                        Local tests; fetch mocks exist only in tests
 ```
 
-Route groups do not appear in URLs. Existing `/perfil`, `/admin/medicos` and `/admin/personal` paths are preserved. Each route's `page.tsx` is a Server Component that reads request data, loads API data or checks permissions, then passes safe props to its presentation component. Login/register views and forms live in `(auth)/components`, the profile and header in `(site)/components`, and administrative presentation in `(admin)/components`.
+Route groups do not appear in URLs. Public and administrative routes use English paths, including `/profile`, `/admin/doctors` and `/admin/staff`. Each route's `page.tsx` is a Server Component that reads request data, loads API data or checks permissions, then passes safe props to its presentation component. Login/register views and forms live in `(auth)/components`, the profile and header in `(site)/components`, and administrative presentation in `(admin)/components`.
 
 `features/` is exclusively the typed API integration layer, without UI components, form validation or Next.js actions. Its public `index.ts` files export types explicitly; server-only API functions are imported directly from `api.server.ts` so they cannot accidentally enter client bundles. Form actions and validation belong to the route area that uses them. The backend project remains unchanged.
 

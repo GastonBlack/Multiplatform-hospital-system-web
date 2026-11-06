@@ -22,9 +22,9 @@ export default async function AdminLayout({
           className="flex flex-col flex-wrap items-start gap-6 text-[13px] text-[#4d5360] [&_a:hover]:text-[#163f73] [&_a:hover]:underline max-[600px]:flex-row max-[600px]:gap-4"
         >
           <a href="/admin">Dashboard</a>
-          <a href="/admin/medicos">Doctors</a>
-          <a href="/admin/personal">Staff</a>
-          <a href="/perfil">My profile</a>
+          <a href="/admin/doctors">Doctors</a>
+          <a href="/admin/staff">Staff</a>
+          <a href="/profile">My profile</a>
           <a href="/">Back to site</a>
         </nav>
       </aside>

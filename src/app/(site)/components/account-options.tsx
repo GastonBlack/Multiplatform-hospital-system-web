@@ -44,7 +44,7 @@ export function AccountOptions({ canAdmin }: { canAdmin: boolean }) {
       </summary>
       <div className="absolute left-1/2 top-full z-20 mt-2 w-48 -translate-x-1/2 rounded-sm border border-[#e7e9ee] bg-white p-2 shadow-lg">
         <a
-          href="/perfil"
+          href="/profile"
           className="relative flex min-h-10 items-center gap-2 px-3 text-xs font-semibold text-[#242424] after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-4/5 after:-translate-x-1/2 after:scale-x-0 after:bg-[#142375] after:transition-transform hover:bg-[#f6f7fb] hover:after:scale-x-100 focus-visible:after:scale-x-100"
         >
           <UserRound aria-hidden="true" size={16} /> My profile

@@ -4,29 +4,28 @@ import { ChevronLeft } from "lucide-react";
 
 export function LoginPageView({ expired }: { expired: boolean }) {
   return (
-    <div className="min-h-svh bg-[#e4e4e4] flex items-center justify-center px-4 pt-4 pb-[calc(16px+10svh)] font-sans selection:bg-[#1e4d30] selection:text-white">
-      <div className="w-full max-w-xl flex flex-col overflow-hidden rounded-sm bg-white p-6 shadow-[0_12px_36px_rgba(36,36,36,0.14),0_2px_8px_rgba(36,36,36,0.06)]">
+    <div className="flex min-h-svh items-center justify-center bg-[#f5fafc] px-4 pt-6 pb-[calc(24px+10svh)] font-sans text-[#242424] selection:bg-[#d9f0fa] selection:text-[#286780]">
+      <div className="flex w-full max-w-xl flex-col rounded-lg border border-[#eceef3] bg-white p-5 shadow-[0_0_40px_rgba(0,0,0,0.12),0_0_10px_rgba(0,0,0,0.06)] sm:p-7">
         {/* Back link */}
         <div className="flex items-center bg-white">
           <Link
             href="/"
             aria-label="Back to home"
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#242424] hover:scale-115 transition-all transition-01s"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-[#626a78] hover:text-[#142375] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#142375]"
           >
-            <ChevronLeft aria-hidden="true" size={24} />
+            <ChevronLeft aria-hidden="true" size={17} strokeWidth={1.8} />
+            Home
           </Link>
         </div>
 
         {expired && (
           <p
             role="status"
-            className="mx-4 mt-3 rounded-md border border-[#1e4d30]/20 bg-white px-3 py-2.5 text-xs text-[#1e4d30] font-medium shadow-sm"
+            className="mt-5 border-l-2 border-[#142375] bg-[#f3f5fc] px-4 py-3 text-xs leading-5 text-[#536078]"
           >
             Your session has expired. Please sign in again.
           </p>
         )}
-
-        <h1 className="sr-only">Sign in</h1>
 
         {/* Auth Card */}
         <LoginForm />

@@ -42,7 +42,7 @@ All API calls run server-to-server. Browser CORS is not needed for this scope. T
 src/app/
   layout.tsx                  Shared root and English document language
   (auth)/                     Compact sign-in and registration layout
-    components/               Login/register views, forms and sign-out button
+    components/               Login/register views and forms
     actions.ts                Server Actions that call API features
     validation.ts             Shared client/server form validation
     types.ts                  Form feedback types

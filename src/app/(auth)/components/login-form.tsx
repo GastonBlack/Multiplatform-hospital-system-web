@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Lock, CreditCard, Check, Hospital, X } from "lucide-react";
 import { loginAction } from "../actions";
 import { validateForm } from "../validation";
+import { PasswordVisibilityButton } from "./password-visibility-button";
 
 interface Field {
   name: string;
@@ -18,18 +19,35 @@ interface Field {
 
 function getIconForField(fieldName: string) {
   return fieldName === "nationalIdentificationNumber" ? (
-    <CreditCard aria-hidden="true" strokeWidth={1.6} className="mr-3 size-[18px] shrink-0 text-[#737986]" />
+    <CreditCard
+      aria-hidden="true"
+      strokeWidth={1.6}
+      className="mr-3 size-[18px] shrink-0 text-[#737986]"
+    />
   ) : (
-    <Lock aria-hidden="true" strokeWidth={1.6} className="mr-3 size-[18px] shrink-0 text-[#737986]" />
+    <Lock
+      aria-hidden="true"
+      strokeWidth={1.6}
+      className="mr-3 size-[18px] shrink-0 text-[#737986]"
+    />
   );
 }
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, {});
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<
     string,
     string[]
   > | null>(null);
+  const [visibleRequirements, setVisibleRequirements] = useState<string[]>([]);
+
+  function checkRequirements(data: FormData) {
+    const { errors } = validateForm(data, false);
+    setValidationErrors(errors);
+    setVisibleRequirements((previous) => [...new Set([...previous, ...Object.keys(errors)])]);
+    return errors;
+  }
 
   const inputs: Field[] = [
     {
@@ -57,42 +75,54 @@ export function LoginForm() {
       <div className="flex flex-col items-center px-2 pt-7 pb-7 sm:px-8 sm:pt-8">
         {/* MHS Icon */}
         <div className="flex flex-col items-center">
-          <Hospital aria-hidden="true" strokeWidth={1.4} className="size-12 shrink-0 fill-none text-[#367891]" />
-          <span className="mt-1 text-[11px] font-bold tracking-[0.12em] text-[#367891]">MHS</span>
+          <Hospital
+            aria-hidden="true"
+            strokeWidth={1.4}
+            className="size-12 shrink-0 fill-none text-[#367891]"
+          />
+          <span className="mt-1 text-[11px] font-bold tracking-[0.12em] text-[#367891]">
+            MHS
+          </span>
         </div>
-        <h1 className="mt-5 mb-7 text-xl font-medium tracking-[-0.03em]">Sign in</h1>
+        <h1 className="mt-5 mb-7 text-xl font-medium tracking-[-0.03em]">
+          Sign in
+        </h1>
 
         {/* Form */}
         <form
           id="login-form"
           action={action}
           noValidate
-          onReset={() => setValidationErrors(null)}
+          onReset={() => {
+            setValidationErrors(null);
+            setVisibleRequirements([]);
+            setPasswordVisible(false);
+          }}
           onInput={(event) => {
             const input = event.target;
             if (
+              validationErrors === null ||
               !(input instanceof HTMLInputElement) ||
               (input.name !== "nationalIdentificationNumber" &&
                 input.name !== "password")
             )
               return;
-            setValidationErrors(
-              validateForm(new FormData(event.currentTarget), false).errors,
-            );
+            checkRequirements(new FormData(event.currentTarget));
           }}
           onSubmit={(event) => {
-            const { errors } = validateForm(
-              new FormData(event.currentTarget),
-              false,
-            );
-            setValidationErrors(errors);
+            const errors = checkRequirements(new FormData(event.currentTarget));
             if (Object.keys(errors).length) event.preventDefault();
           }}
           className="flex w-full flex-col gap-5"
         >
           {inputs.map((input) => (
             <div key={input.name} className="mx-auto w-full sm:w-[85%]">
-              <label htmlFor={`login-${input.name}`} className="mb-2 block text-xs font-medium text-[#626a78]">{input.label}</label>
+              <label
+                htmlFor={`login-${input.name}`}
+                className="mb-2 block text-xs font-medium text-[#626a78]"
+              >
+                {input.label}
+              </label>
               {input.name === "nationalIdentificationNumber" && (
                 <p
                   id="national-id-hint"
@@ -101,13 +131,17 @@ export function LoginForm() {
                   Exactly 8 digits. No spaces, dots or hyphens.
                 </p>
               )}
-              <div className="flex items-center border-b border-[#d5e7ee] px-1 py-2 transition-colors focus-within:border-[#79bfd7] focus-within:bg-[#f1faff] hover:bg-[#f8fcfe] motion-reduce:transition-none">
+              <div className="group relative flex items-center border-b border-[#79bfd7] px-1 py-2 transition-colors focus-within:bg-[#f1faff] hover:bg-[#f8fcfe] motion-reduce:transition-none">
                 {getIconForField(input.name)}
                 <input
                   id={`login-${input.name}`}
                   name={input.name}
-                  type={input.type || "text"}
-                  placeholder={input.name === "password" ? "Enter your password" : "Enter your 8-digit ID"}
+                  type={input.type === "password" && passwordVisible ? "text" : input.type || "text"}
+                  placeholder={
+                    input.name === "password"
+                      ? "Enter your password"
+                      : "Enter your 8-digit ID"
+                  }
                   autoComplete={input.autoComplete}
                   minLength={input.minLength}
                   maxLength={input.maxLength}
@@ -126,7 +160,7 @@ export function LoginForm() {
                       input.name === "nationalIdentificationNumber"
                         ? "national-id-hint"
                         : "",
-                      validationErrors !== null
+                      visibleRequirements.includes(input.name)
                         ? `${input.name}-requirement`
                         : "",
                     ]
@@ -134,7 +168,22 @@ export function LoginForm() {
                       .join(" ") || undefined
                   }
                   disabled={pending}
-                  className="min-w-0 w-full bg-transparent py-1 text-[13px] leading-6 text-[#363636] outline-none focus-visible:shadow-none! disabled:opacity-50"
+                  className="min-w-0 w-full bg-transparent py-1 text-[13px] leading-6 text-[#363636] outline-none focus-visible:shadow-none! disabled:opacity-50 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                />
+                {input.type === "password" && (
+                  <PasswordVisibilityButton
+                    visible={passwordVisible}
+                    onToggle={() => setPasswordVisible((visible) => !visible)}
+                    inputId={`login-${input.name}`}
+                    label={input.label}
+                    disabled={pending}
+                  />
+                )}
+
+                {/* Expand the underline from the center when the input is focused. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 origin-center scale-x-0 bg-[#0284c7] transition-transform duration-300 ease-out group-focus-within:scale-x-100 motion-reduce:transition-none"
                 />
               </div>
             </div>
@@ -167,7 +216,7 @@ export function LoginForm() {
             </Link>
           </div>
 
-          {validationErrors !== null && (
+          {validationErrors !== null && visibleRequirements.length > 0 && (
             <ul
               aria-label="Sign-in requirements"
               aria-live="polite"
@@ -180,7 +229,7 @@ export function LoginForm() {
                   text: "National ID: exactly 8 digits, without spaces, dots or hyphens.",
                 },
                 { name: "password", text: "Password: 6 to 12 characters." },
-              ].map((rule) => {
+              ].filter((rule) => visibleRequirements.includes(rule.name)).map((rule) => {
                 const valid = !validationErrors[rule.name];
                 const Icon = valid ? Check : X;
                 return (
@@ -196,9 +245,7 @@ export function LoginForm() {
                       className="mt-0.5 shrink-0"
                     />
                     <span>
-                      <span className="sr-only">
-                        {valid ? "Met: " : "Required: "}
-                      </span>
+                      <span className="sr-only">{valid ? "Met: " : "Required: "}</span>
                       {rule.text}
                     </span>
                   </li>
@@ -223,13 +270,18 @@ export function LoginForm() {
         type="submit"
         form="login-form"
         disabled={pending}
-        className="relative mt-auto w-full cursor-pointer rounded-r-md bg-[#eff9fd] py-3.5 text-center text-[13px] font-semibold text-[#286780] before:absolute before:left-0 before:top-1/2 before:h-6 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#8acbe0] hover:bg-[#e3f4fb] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#367891] disabled:cursor-wait disabled:opacity-50"
+        className="relative mt-auto w-full cursor-pointer rounded-r-md bg-[#cef0ff] py-3.5 text-center text-[13px] font-semibold text-[#286780] before:absolute before:left-0 before:top-1/2 before:h-6 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#8acbe0] hover:bg-[#b5eaff] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#367891] disabled:cursor-wait disabled:opacity-50"
       >
         {pending ? "Signing in..." : "Sign in"}
       </button>
       <p className="pt-5 text-center text-xs leading-5 text-[#626a78]">
         New patient?{" "}
-        <Link href="/register" className="font-medium text-[#286780] underline-offset-4 hover:underline">Create an account</Link>
+        <Link
+          href="/register"
+          className="font-medium text-[#286780] underline-offset-4 hover:underline"
+        >
+          Create an account
+        </Link>
       </p>
     </div>
   );

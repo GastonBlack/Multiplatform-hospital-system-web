@@ -1,12 +1,17 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { ChevronDown, LogOut, UserRound, ShieldCheck } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 
 export function AccountOptions({ canAdmin }: { canAdmin: boolean }) {
   const [state, action, pending] = useActionState(logoutAction, {});
   const dropdownRef = useRef<HTMLDetailsElement>(null);
+
+  function closeDropdown() {
+    if (dropdownRef.current) dropdownRef.current.open = false;
+  }
 
   useEffect(() => {
     function closeOutside(event: PointerEvent) {
@@ -43,16 +48,18 @@ export function AccountOptions({ canAdmin }: { canAdmin: boolean }) {
         />
       </summary>
       <div className="absolute left-1/2 top-full z-20 mt-2 w-48 -translate-x-1/2 rounded-sm border border-[#e7e9ee] bg-white p-2 shadow-lg">
-        <a
+        <Link
           href="/profile"
+          prefetch={false}
+          onClick={closeDropdown}
           className="relative flex min-h-10 items-center gap-2 px-3 text-xs font-semibold text-[#242424] after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-4/5 after:-translate-x-1/2 after:scale-x-0 after:bg-[#142375] after:transition-transform hover:bg-[#f6f7fb] hover:after:scale-x-100 focus-visible:after:scale-x-100"
         >
           <UserRound aria-hidden="true" size={16} /> My profile
-        </a>
+        </Link>
         {canAdmin && (
-          <a href="/admin" className="relative flex min-h-10 items-center gap-2 px-3 text-xs font-semibold text-[#242424] after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-4/5 after:-translate-x-1/2 after:scale-x-0 after:bg-[#142375] after:transition-transform hover:bg-[#f6f7fb] hover:after:scale-x-100 focus-visible:after:scale-x-100">
+          <Link href="/admin" prefetch={false} onClick={closeDropdown} className="relative flex min-h-10 items-center gap-2 px-3 text-xs font-semibold text-[#242424] after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-4/5 after:-translate-x-1/2 after:scale-x-0 after:bg-[#142375] after:transition-transform hover:bg-[#f6f7fb] hover:after:scale-x-100 focus-visible:after:scale-x-100">
             <ShieldCheck aria-hidden="true" size={16} /> Go to admin panel
-          </a>
+          </Link>
         )}
         <form action={action}>
           <button

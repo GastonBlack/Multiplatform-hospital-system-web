@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "doctor": "react-doctor --no-telemetry",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -27,6 +28,7 @@
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.5",
+    "react-doctor": "^0.9.23",
     "tailwindcss": "^4.3.4",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"

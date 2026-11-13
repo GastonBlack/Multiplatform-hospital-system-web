@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --conditions=react-server --test tests/*.test.ts"
+    "test": "tsx --experimental-test-module-mocks --conditions=react-server --test tests/*.test.ts"
   },
   "engines": {
     "node": ">=24 <25"

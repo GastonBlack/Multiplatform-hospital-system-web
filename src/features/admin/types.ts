@@ -1,5 +1,35 @@
 import type { AccountStatus } from "@/features/auth/types";
 
+export type DirectorySection = "doctors" | "staff";
+
+export interface PagedResponse<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+interface EmployeeDirectoryItem {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  nationalIdentificationNumber: string | null;
+  employeeNumber: string;
+  accountStatus: AccountStatus;
+}
+
+export interface DoctorDirectoryItem extends EmployeeDirectoryItem {
+  doctorId: string;
+  medicalLicenseNumber: string;
+}
+
+export interface StaffDirectoryItem extends EmployeeDirectoryItem {
+  staffId: string;
+  staffRole: StaffRole;
+}
+
 interface EmployeeRegistration {
   firstName: string;
   lastName: string;

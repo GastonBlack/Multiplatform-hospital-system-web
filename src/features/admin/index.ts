@@ -1,4 +1,8 @@
 export type {
+  DirectorySection,
+  DoctorDirectoryItem,
+  StaffDirectoryItem,
+  PagedResponse,
   RegisterDoctorRequest,
   RegisterDoctorResponse,
   RegisterStaffRequest,

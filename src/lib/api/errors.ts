@@ -28,7 +28,20 @@ export function parseApiError(status: number, body: unknown): ApiError {
       }
     }
   }
-  // Do not expose raw backend diagnostics to the user.
+  const knownConflicts = [
+    "Email is already registered.",
+    "Identification number is already registered.",
+    "Medical license number is already registered.",
+  ];
+  const conflict =
+    body &&
+    typeof body === "object" &&
+    "message" in body &&
+    typeof body.message === "string" &&
+    knownConflicts.includes(body.message)
+      ? body.message
+      : "An account already exists with these details.";
+  // Only known conflict messages may be exposed; other diagnostics remain private.
   const message = Object.keys(fields).length
     ? "Please check the highlighted fields."
     : status === 401
@@ -36,7 +49,7 @@ export function parseApiError(status: number, body: unknown): ApiError {
       : status === 403
         ? "You do not have permission to perform this action."
         : status === 409
-          ? "An account already exists with these details."
+          ? conflict
           : status >= 500
             ? "The service is unavailable. Please try again later."
             : "The request could not be completed. Please check your details.";

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { DoctorRegistrationForm } from "./doctor-registration-form";
+import { StaffRegistrationForm } from "./staff-registration-form";
 import { EmployeeHeader } from "./employee-header";
 import { EmployeeFilters } from "./employee-filters";
 import { EmployeeTable } from "./employee-table";
@@ -40,10 +41,16 @@ export function EmployeeManagement({
       />
       {registrationOpen ? (
         <div
-          id="doctor-registration"
+          id={
+            section === "doctors" ? "doctor-registration" : "staff-registration"
+          }
           className="mt-5 rounded-xl border border-[#d1dbe9] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] sm:p-6"
         >
-          <DoctorRegistrationForm />
+          {section === "doctors" ? (
+            <DoctorRegistrationForm />
+          ) : (
+            <StaffRegistrationForm />
+          )}
         </div>
       ) : (
         <>

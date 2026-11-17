@@ -54,7 +54,7 @@ src/app/
     page.tsx
     profile/page.tsx
   (admin)/
-    components/               Administrative presentation and doctor registration form
+    components/               Administrative presentation and shared employee registration form
     admin/                    Layout and protected Server Component pages
       page.tsx
       doctors/page.tsx
@@ -77,7 +77,7 @@ Route groups do not appear in URLs. Public and administrative routes use English
 ## Authentication and permissions
 
 - Sign-in for patients, doctors, receptionists and administrators sends only `{ nationalIdentificationNumber, password }` to `POST /api/auth/login`. The ID is a string of exactly eight ASCII digits, preserving leading zeros and rejecting spaces, dots and hyphens. Email is required for registration, but cannot be used to sign in. Invalid format returns 400; incorrect credentials return 401.
-- Patient registration preserves its existing body. Doctor/staff registration types also require `nationalIdentificationNumber`. Doctors can be registered from `/admin/doctors`; the staff registration form remains pending.
+- Patient registration preserves its existing body. Doctor/staff registration also requires `nationalIdentificationNumber`. Active administrators can register doctors from `/admin/doctors` and staff from `/admin/staff`.
 - Server Actions validate all form values. Passwords are never trimmed. Dates use America/Montevideo for future-date validation.
 - Tokens are stored only in `mhs_access` and `mhs_refresh` cookies: HttpOnly, SameSite=Lax, Path=/ and Secure in production. Their expiration dates come from `accessTokenExpiresAt` and `sessionExpiresAt`, respectively. Tokens are never passed through component props, action responses, logs, localStorage or sessionStorage.
 - When a page request needs a session and access has expired, the server redirects to `/session/refresh`. A same-origin Server Action calls `POST /api/auth/refresh` and writes both replacement cookies before returning to the requested page. Server Components do not mutate cookies. Renewal happens on demand, rather than keeping an inactive tab alive with polling.
@@ -98,15 +98,17 @@ The frontend shows Administration in Options only when a backend-validated sessi
 
 The session endpoint returns 401 without a token. Automated role tests use mocked API responses; authenticated integration checks require real test accounts.
 
-## Doctor registration
+## Employee registration
 
 `/admin/doctors` opens a directory view; Add doctor opens the registration form within the section. The page and its registration Server Action both call `requireAdmin()`. The action validates six fields before sending `POST /api/doctors/register` with the administrator's server-only access token. Generated employee numbers, profile and account status are never submitted as editable fields. The registration response's `accountStatus` is text; the session's status remains numeric.
 
+Add staff member opens the equivalent form in `/admin/staff`. It reuses the employee fields and password visibility control, replacing the medical license field with a required role selection: Receptionist or Administrator. Its independently guarded Server Action sends `POST /api/staff/register`, accepts only these exact role strings, and shows the generated employee number on success. Both forms share validation for names, email, identification and password. Identification stays an exact eight-ASCII-digit string and passwords are never trimmed. Neither registration replaces the current administrator's session.
+
 Doctors and Staff share a directory layout with actions, resource-specific filters, table columns and server-side pagination of 25 records per page. Their protected Server Components load `GET /api/doctors` or `GET /api/staff` with the current administrator's server-only token. Search and pagination use URL query parameters; applying or clearing filters returns to page 1, and page navigation preserves applied filters. Text searches accept partial names, emails and employee/license numbers. Identification filters preserve the exact string, and the backend validates them. Staff supports `staffRole`; both directories support textual `accountStatus` filters. Legacy null identification numbers appear as Not provided.
 
-Directory requests use `cache: no-store`. Expired authorization enters the existing session-renewal flow with the current filters and page as the return path. Validation, access-denied and service errors remain visible rather than appearing as empty results. Returning from doctor registration refreshes the directory. Editing, deletion and staff registration remain disabled until their corresponding operations are implemented.
+Directory requests use `cache: no-store`. Expired authorization enters the existing session-renewal flow with the current filters and page as the return path. Validation, access-denied and service errors remain visible rather than appearing as empty results. Returning from either registration form refreshes its directory. Editing and deletion remain disabled until their corresponding operations are implemented.
 
-The form retains its values after validation and API errors, disables submission while pending, and clears its fields after success. Confirmation shows the generated employee number. The action returns no submitted values, password or tokens and never changes the administrator's session to the doctor's account. A 401 enters the existing session-renewal flow without automatically retrying the registration POST. Validation errors, access denial and the three known conflict messages use safe English feedback. Real registration and session recovery should also be checked against a running API with an administrator test account.
+Each form retains its values after validation and API errors, disables submission while pending, and clears its fields after success. Confirmation shows the generated employee number. Actions return no submitted values, passwords or tokens. A 401 enters the existing session-renewal flow for the corresponding section without automatically retrying the registration POST. Validation errors, access denial and known conflict messages use safe English feedback. Real registration and session recovery should also be checked against a running API with an administrator test account.
 
 ## Verification
 
@@ -119,7 +121,7 @@ npm run build
 
 ESLint runs separately from the Next.js 16 build. Typecheck generates route types first. Tests use Node's test runner with tsx and the `react-server` condition for server-only modules. Test mocks are not available as an application authentication mode.
 
-Tests cover absent/revoked sessions, missing roles, receptionists, inactive administrators, confirmed active administrators, repeated permission checks and connection failures. They also cover API error formats, empty responses, login request fields, 400/401 handling, registration validation and unchanged passwords/leading zeros. Doctor registration tests execute the Server Action with mocked Next.js request APIs and backend responses, including authorization changes, generated employee numbers, safe feedback and all supported error statuses. The test command enables Node's experimental module mocking for these request APIs.
+Tests cover absent/revoked sessions, missing roles, receptionists, inactive administrators, confirmed active administrators, repeated permission checks and connection failures. They also cover API error formats, empty responses, login request fields, 400/401 handling, registration validation and unchanged passwords/leading zeros. Employee registration tests execute both Server Actions with mocked Next.js request APIs and backend responses, including allowed staff roles, authorization changes, generated employee numbers, safe feedback and all supported error statuses. The test command enables Node's experimental module mocking for these request APIs.
 
 Directory tests cover authenticated GET requests, fixed page sizes, resource-specific filters, URL encoding, unchanged identification strings, pagination metadata, null identification numbers, empty results, validation feedback, session-renewal return paths and service failures. Protected page tests cover both Doctors and Staff.
 
@@ -131,6 +133,6 @@ Use `npm audit` to review dependency advisories and `npm audit --omit=dev` for p
 
 ## Current scope
 
-Header-only home, compact sign-in and patient registration, automatic on-demand session renewal, protected account profile, sign-out, protected Admin sections, paginated doctor/staff directories with optional filters and doctor registration. Appointments, availability, specialties, doctor/staff editing/deletion and staff registration forms remain pending.
+Header-only home, compact sign-in and patient registration, automatic on-demand session renewal, protected account profile, sign-out, protected Admin sections, paginated doctor/staff directories with optional filters and employee registration. Appointments, availability, specialties and doctor/staff editing/deletion remain pending.
 
 The appointment and medical-history navigation buttons are disabled placeholders. The sign-in form's Remember me control does not change session persistence: cookies currently expire at the backend-provided dates for all sign-ins. The Forgot Password link targets a recovery route that is not implemented. Password recovery and distinct Remember me behavior remain pending.

@@ -6,6 +6,8 @@ import type {
   PagedResponse,
   RegisterDoctorRequest,
   RegisterDoctorResponse,
+  RegisterStaffRequest,
+  RegisterStaffResponse,
 } from "./types";
 
 export const getDoctorDirectory = (token: string, query: URLSearchParams) =>
@@ -16,6 +18,13 @@ export const getStaffDirectory = (token: string, query: URLSearchParams) =>
 
 export const registerDoctor = (token: string, body: RegisterDoctorRequest) =>
   api<RegisterDoctorResponse>("/api/doctors/register", {
+    method: "POST",
+    token,
+    body,
+  });
+
+export const registerStaff = (token: string, body: RegisterStaffRequest) =>
+  api<RegisterStaffResponse>("/api/staff/register", {
     method: "POST",
     token,
     body,

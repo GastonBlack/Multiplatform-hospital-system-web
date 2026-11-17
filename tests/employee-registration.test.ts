@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { validateDoctorRegistration } from "../src/app/(admin)/admin/doctors/validation";
+import { validateStaffRegistration } from "../src/app/(admin)/admin/staff/validation";
 import { getValidatedSession } from "../src/features/auth/api.server";
 
 let accessToken: string | undefined = "admin-token";
@@ -11,6 +12,8 @@ let session: unknown;
 let registrationStatus = 201;
 let registrationBody: unknown;
 let posted: Record<string, unknown>[] = [];
+let registrationEndpoint = "/api/doctors/register";
+let returnPath = "/admin/doctors";
 const originalFetch = globalThis.fetch;
 const originalBase = process.env.API_BASE_URL;
 
@@ -26,7 +29,7 @@ mock.module("next/navigation", {
 });
 mock.module("next/headers", {
   exports: {
-    headers: async () => new Headers({ "x-mhs-return-path": "/admin/doctors" }),
+    headers: async () => new Headers({ "x-mhs-return-path": returnPath }),
   },
 });
 mock.module(pathToFileURL(resolve("src/lib/auth/session.server.ts")).href, {
@@ -44,11 +47,14 @@ mock.module(
 );
 
 let registerDoctorAction: typeof import("../src/app/(admin)/admin/doctors/actions").registerDoctorAction;
+let registerStaffAction: typeof import("../src/app/(admin)/admin/staff/actions").registerStaffAction;
 let DoctorsPage: typeof import("../src/app/(admin)/admin/doctors/page").default;
 let StaffPage: typeof import("../src/app/(admin)/admin/staff/page").default;
 before(async () => {
   ({ registerDoctorAction } =
     await import("../src/app/(admin)/admin/doctors/actions"));
+  ({ registerStaffAction } =
+    await import("../src/app/(admin)/admin/staff/actions"));
   ({ default: DoctorsPage } =
     await import("../src/app/(admin)/admin/doctors/page"));
   ({ default: StaffPage } =
@@ -93,7 +99,10 @@ function backend(
   value: unknown = administrator,
   status = 201,
   body: unknown = response,
+  section: "doctors" | "staff" = "doctors",
 ) {
+  registrationEndpoint = `/api/${section}/register`;
+  returnPath = `/admin/${section}`;
   session = value;
   registrationStatus = status;
   registrationBody = body;
@@ -125,7 +134,7 @@ function backend(
         }),
       );
     }
-    assert.equal(String(url), "https://localhost:7109/api/doctors/register");
+    assert.equal(String(url), `https://localhost:7109${registrationEndpoint}`);
     assert.equal(init?.method, "POST");
     assert.equal(
       (init?.headers as Record<string, string>)["Content-Type"],
@@ -325,4 +334,189 @@ test("service failures remain safe failures and never authorize registration", a
   await assert.rejects(registerDoctorAction({}, form()), /Unable to connect/);
   assert.equal(posted.length, 0);
   await assert.rejects(getValidatedSession("admin-token"), /Unable to connect/);
+});
+
+function staffForm(overrides: Record<string, string> = {}) {
+  return form({ staffRole: "Receptionist", ...overrides });
+}
+
+test("staff registration validates exact roles, preserves identifiers/passwords and excludes generated fields", () => {
+  for (const staffRole of ["Receptionist", "Administrator"]) {
+    const { values, errors } = validateStaffRegistration(
+      staffForm({ staffRole, employeeNumber: "FAKE", accountStatus: "Active" }),
+    );
+    assert.deepEqual(errors, {});
+    assert.equal(values.staffRole, staffRole);
+    assert.equal(values.nationalIdentificationNumber, "01234567");
+    assert.equal(values.password, " pass ");
+    assert.equal(values.email, "ana@example.com");
+    assert.deepEqual(
+      Object.keys(values).sort(),
+      [
+        "firstName",
+        "lastName",
+        "email",
+        "nationalIdentificationNumber",
+        "password",
+        "staffRole",
+      ].sort(),
+    );
+  }
+  for (const staffRole of [
+    "",
+    "1",
+    "2",
+    "Staff",
+    "Doctor",
+    "receptionist",
+    "Administrator ",
+  ])
+    assert.ok(
+      validateStaffRegistration(staffForm({ staffRole })).errors.staffRole,
+    );
+  for (const id of [
+    "1234567",
+    "123456789",
+    " 01234567",
+    "01.234.567",
+    "０１２３４５６７",
+  ])
+    assert.ok(
+      validateStaffRegistration(staffForm({ nationalIdentificationNumber: id }))
+        .errors.nationalIdentificationNumber,
+    );
+  const file = staffForm();
+  file.set("staffRole", new Blob(["Administrator"]), "role.txt");
+  assert.ok(validateStaffRegistration(file).errors.staffRole);
+});
+
+test("active administrators register either staff role without changing their own session", async () => {
+  for (const staffRole of ["Receptionist", "Administrator"]) {
+    backend(
+      administrator,
+      201,
+      {
+        userId: "new-user",
+        staffId: "new-staff",
+        employeeNumber: "EMP-000002",
+        staffRole,
+        accountStatus: "Active",
+      },
+      "staff",
+    );
+    const result = await registerStaffAction({}, staffForm({ staffRole }));
+    assert.deepEqual(result, {
+      success: true,
+      message: "Staff member registered successfully.",
+      employeeNumber: "EMP-000002",
+    });
+    assert.deepEqual(posted, [
+      validateStaffRegistration(staffForm({ staffRole })).values,
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /admin-token|password|pass|new-user/,
+    );
+    assert.equal(
+      (await getValidatedSession("admin-token"))?.role,
+      "Administrator",
+    );
+  }
+});
+
+test("staff registration rejects missing sessions, non-administrators and inactive administrators before posting", async () => {
+  for (const value of [
+    null,
+    { ...administrator, role: undefined },
+    ...["Patient", "Doctor", "Receptionist", "Staff"].map((role) => ({
+      ...administrator,
+      role,
+    })),
+    ...[1, 3, 4].map((accountStatus) => ({ ...administrator, accountStatus })),
+  ]) {
+    backend(value, 201, {}, "staff");
+    await assert.rejects(registerStaffAction({}, staffForm()), /NOT_FOUND/);
+    assert.equal(posted.length, 0);
+  }
+  backend(administrator, 201, {}, "staff");
+  accessToken = undefined;
+  await assert.rejects(registerStaffAction({}, staffForm()), /NOT_FOUND/);
+  assert.equal(posted.length, 0);
+});
+
+test("staff registration rechecks permissions and rejects invalid input without returning credentials", async () => {
+  backend(administrator, 201, { employeeNumber: "EMP-000002" }, "staff");
+  const invalid = await registerStaffAction(
+    {},
+    staffForm({ staffRole: "Staff", firstName: "A", password: "123" }),
+  );
+  assert.ok(invalid.errors?.staffRole);
+  assert.ok(invalid.errors?.firstName);
+  assert.ok(invalid.errors?.password);
+  assert.equal("values" in invalid, false);
+  assert.equal(posted.length, 0);
+  await registerStaffAction({}, staffForm());
+  session = { ...administrator, role: "Receptionist" };
+  await assert.rejects(registerStaffAction({}, staffForm()), /NOT_FOUND/);
+  assert.equal(posted.length, 1);
+});
+
+test("staff registration supports both 400 formats, conflict details, access denial and safe service errors", async () => {
+  for (const body of [
+    { errors: { StaffRole: ["Private diagnostic"] } },
+    { message: "Private diagnostic" },
+  ]) {
+    backend(administrator, 400, body, "staff");
+    const result = await registerStaffAction({}, staffForm());
+    assert.ok(result.message);
+    if ("errors" in body) assert.ok(result.errors?.staffRole);
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /Private diagnostic|admin-token/,
+    );
+  }
+  for (const message of [
+    "Email is already registered.",
+    "Identification number is already registered.",
+  ]) {
+    backend(administrator, 409, { message }, "staff");
+    assert.equal((await registerStaffAction({}, staffForm())).message, message);
+  }
+  backend(administrator, 403, {}, "staff");
+  assert.match(
+    (await registerStaffAction({}, staffForm())).message!,
+    /permission/,
+  );
+  backend(administrator, 500, { message: "Private diagnostic" }, "staff");
+  assert.match(
+    (await registerStaffAction({}, staffForm())).message!,
+    /unavailable/,
+  );
+  backend(administrator, 201, {}, "staff");
+  const fetchSession = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (new URL(String(url)).pathname === "/api/staff/register")
+      throw new TypeError("Private diagnostic");
+    return fetchSession(url, init);
+  };
+  assert.match(
+    (await registerStaffAction({}, staffForm())).message!,
+    /Unable to connect/,
+  );
+});
+
+test("staff registration 401 uses Staff session recovery without retrying the POST", async () => {
+  backend(null, 201, {}, "staff");
+  refreshToken = "refresh-cookie";
+  await assert.rejects(
+    registerStaffAction({}, staffForm()),
+    /REDIRECT:\/session\/refresh\?returnTo=%2Fadmin%2Fstaff/,
+  );
+  assert.equal(posted.length, 0);
+  backend(administrator, 401, undefined, "staff");
+  await assert.rejects(
+    registerStaffAction({}, staffForm()),
+    /REDIRECT:\/session\/refresh\?returnTo=%2Fadmin%2Fstaff/,
+  );
+  assert.equal(posted.length, 1);
 });

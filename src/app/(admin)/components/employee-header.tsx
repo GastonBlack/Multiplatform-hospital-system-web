@@ -41,13 +41,10 @@ export function EmployeeHeader({
       >
         <button
           type="button"
-          disabled={!doctors || pending}
+          disabled={pending}
           onClick={onToggle}
-          aria-expanded={doctors ? registrationOpen : undefined}
-          aria-controls={doctors ? "doctor-registration" : undefined}
-          title={
-            !doctors ? "Staff registration is not available yet." : undefined
-          }
+          aria-expanded={registrationOpen}
+          aria-controls={doctors ? "doctor-registration" : "staff-registration"}
           className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md bg-[#142375] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#243889] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#142375] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {registrationOpen ? (
@@ -56,7 +53,7 @@ export function EmployeeHeader({
             <Plus aria-hidden="true" size={16} />
           )}
           {registrationOpen
-            ? "Back to doctors"
+            ? `Back to ${doctors ? "doctors" : "staff"}`
             : doctors
               ? "Add doctor"
               : "Add staff member"}

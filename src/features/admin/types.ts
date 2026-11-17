@@ -30,7 +30,7 @@ export interface StaffDirectoryItem extends EmployeeDirectoryItem {
   staffRole: StaffRole;
 }
 
-interface EmployeeRegistration {
+export interface EmployeeRegistration {
   firstName: string;
   lastName: string;
   email: string;

@@ -4,6 +4,7 @@ import { getRenderSession } from "@/lib/auth/render-session.server";
 import { ApiError } from "@/lib/api/errors";
 import { AccountOptions } from "./account-options";
 import { isActiveAdmin } from "@/lib/auth/policy";
+import { UnavailableAccount } from "@/app/(auth)/components/unavailable-account";
 
 export async function SiteHeader() {
   let authenticated = false;
@@ -66,9 +67,7 @@ export async function SiteHeader() {
         </nav>
         <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1 text-xs lg:col-start-3">
           {unavailable ? (
-            <p role="status" className="text-xs text-[#626a78]">
-              Account unavailable
-            </p>
+            <UnavailableAccount />
           ) : authenticated ? (
             <AccountOptions canAdmin={canAdmin} />
           ) : (

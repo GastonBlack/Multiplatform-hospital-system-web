@@ -13,6 +13,7 @@ import {
   saveTokens,
 } from "@/lib/auth/session.server";
 import { resolveSessionTokens } from "@/lib/auth/renewal.server";
+import { getRenderSession } from "@/lib/auth/render-session.server";
 import { ApiError } from "@/lib/api/errors";
 import { loginValues, validateForm } from "./validation";
 import type { FormState } from "./types";
@@ -35,6 +36,14 @@ export async function loginAction(
   _previous: FormState,
   data: FormData,
 ): Promise<FormState> {
+  let auth;
+  try {
+    auth = await getRenderSession("/profile");
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    return failure(error);
+  }
+  if (auth) redirect("/profile");
   const { values, errors } = validateForm(data, false);
   if (Object.keys(errors).length)
     return { errors, message: "Please check the highlighted fields." };
@@ -94,6 +103,13 @@ export async function logoutAction(): Promise<FormState> {
       }
     }
   }
+  await clearTokens();
+  redirect("/login");
+}
+
+export async function logoutOnThisDeviceAction(): Promise<never> {
+  // Normal sign-out redirects after revocation. A returned failure allows local recovery.
+  await logoutAction();
   await clearTokens();
   redirect("/login");
 }

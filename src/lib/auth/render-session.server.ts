@@ -5,12 +5,14 @@ import { getValidatedSession } from "@/features/auth/api.server";
 import { readToken, readRefreshToken } from "./session.server";
 import { renewalPath } from "./return-path";
 
-export async function getRenderSession() {
+export async function getRenderSession(returnTo?: string) {
   const token = await readToken();
   const session = await getValidatedSession(token);
   if (session && token) return { session, token };
   if (await readRefreshToken()) {
-    redirect(renewalPath((await headers()).get("x-mhs-return-path")));
+    redirect(
+      renewalPath(returnTo ?? (await headers()).get("x-mhs-return-path")),
+    );
   }
   return null;
 }

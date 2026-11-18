@@ -16,6 +16,14 @@ export const getDoctorDirectory = (token: string, query: URLSearchParams) =>
 export const getStaffDirectory = (token: string, query: URLSearchParams) =>
   api<PagedResponse<StaffDirectoryItem>>(`/api/staff?${query}`, { token });
 
+export const getDoctorDetails = (token: string, doctorId: string) =>
+  api<DoctorDirectoryItem>(`/api/doctors/${encodeURIComponent(doctorId)}`, {
+    token,
+  });
+
+export const getStaffDetails = (token: string, staffId: string) =>
+  api<StaffDirectoryItem>(`/api/staff/${encodeURIComponent(staffId)}`, { token });
+
 export const registerDoctor = (token: string, body: RegisterDoctorRequest) =>
   api<RegisterDoctorResponse>("/api/doctors/register", {
     method: "POST",

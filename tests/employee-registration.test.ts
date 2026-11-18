@@ -48,6 +48,7 @@ mock.module(
 
 let registerDoctorAction: typeof import("../src/app/(admin)/admin/doctors/actions").registerDoctorAction;
 let registerStaffAction: typeof import("../src/app/(admin)/admin/staff/actions").registerStaffAction;
+let getEmployeeDetailsAction: typeof import("../src/app/(admin)/admin/employee-details-action").getEmployeeDetailsAction;
 let DoctorsPage: typeof import("../src/app/(admin)/admin/doctors/page").default;
 let StaffPage: typeof import("../src/app/(admin)/admin/staff/page").default;
 before(async () => {
@@ -55,6 +56,8 @@ before(async () => {
     await import("../src/app/(admin)/admin/doctors/actions"));
   ({ registerStaffAction } =
     await import("../src/app/(admin)/admin/staff/actions"));
+  ({ getEmployeeDetailsAction } =
+    await import("../src/app/(admin)/admin/employee-details-action"));
   ({ default: DoctorsPage } =
     await import("../src/app/(admin)/admin/doctors/page"));
   ({ default: StaffPage } =
@@ -519,4 +522,86 @@ test("staff registration 401 uses Staff session recovery without retrying the PO
     /REDIRECT:\/session\/refresh\?returnTo=%2Fadmin%2Fstaff/,
   );
   assert.equal(posted.length, 1);
+});
+
+const detailProfileId = "bc714ca2-714d-41fb-aa0d-69ca05afed10";
+
+function detailsBackend(
+  section: "doctors" | "staff",
+  status: number,
+  caller: unknown = administrator,
+) {
+  backend(caller);
+  returnPath = `/admin/${section}?page=2`;
+  const sessionFetch = globalThis.fetch;
+  const requests: string[] = [];
+  const item = {
+    userId: "user",
+    firstName: "Ana",
+    lastName: "Perez",
+    email: "ana@example.com",
+    nationalIdentificationNumber: section === "doctors" ? "01234567" : null,
+    employeeNumber: "EMP-000001",
+    accountStatus: "Active",
+    ...(section === "doctors"
+      ? { doctorId: detailProfileId, medicalLicenseNumber: "MED-12345" }
+      : { staffId: detailProfileId, staffRole: "Receptionist" }),
+  };
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(String(url)).pathname;
+    if (path === "/api/auth/session") return sessionFetch(url, init);
+    requests.push(path);
+    assert.equal(path, `/api/${section}/${detailProfileId}`);
+    assert.equal(init?.method, "GET");
+    assert.equal(init?.cache, "no-store");
+    assert.equal(
+      (init?.headers as Record<string, string>).Authorization,
+      "Bearer admin-token",
+    );
+    return Response.json(status === 200 ? item : { message: "Private diagnostic" }, {
+      status,
+    });
+  };
+  return { item, requests };
+}
+
+test("employee details load both profile types by profile ID", async () => {
+  for (const section of ["doctors", "staff"] as const) {
+    const { item, requests } = detailsBackend(section, 200);
+    assert.deepEqual(await getEmployeeDetailsAction(section, detailProfileId), {
+      data: item,
+    });
+    assert.deepEqual(requests, [`/api/${section}/${detailProfileId}`]);
+  }
+});
+
+test("employee details reject inactive administrators and non-admin staff before loading data", async () => {
+  for (const caller of [
+    { ...administrator, accountStatus: 3 },
+    { ...administrator, role: "Receptionist" },
+    null,
+  ]) {
+    const { requests } = detailsBackend("staff", 200, caller);
+    await assert.rejects(getEmployeeDetailsAction("staff", detailProfileId), {
+      message: "NOT_FOUND",
+    });
+    assert.deepEqual(requests, []);
+  }
+});
+
+test("employee details renew the session on 401 and show safe errors for 403 and 404", async () => {
+  detailsBackend("staff", 401);
+  await assert.rejects(getEmployeeDetailsAction("staff", detailProfileId), {
+    message: "REDIRECT:/session/refresh?returnTo=%2Fadmin%2Fstaff%3Fpage%3D2",
+  });
+
+  for (const [status, message] of [
+    [403, "You do not have permission to perform this action."],
+    [404, "This profile could not be found."],
+  ] as const) {
+    detailsBackend("doctors", status);
+    assert.deepEqual(await getEmployeeDetailsAction("doctors", detailProfileId), {
+      message,
+    });
+  }
 });

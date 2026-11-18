@@ -11,7 +11,7 @@ export default async function AdminLayout({
   await requireAdmin();
   return (
     <div className="grid min-h-svh grid-cols-[244px_minmax(0,1fr)] max-[600px]:grid-cols-1">
-      <aside className="flex flex-col border-r border-[#e6e9f0] bg-white px-6 py-8 max-[600px]:border-r-0 max-[600px]:border-b max-[600px]:p-5">
+      <aside className="flex flex-col border-r border-[#e6e9f0] bg-white px-6 py-8 min-[601px]:sticky min-[601px]:top-0 min-[601px]:h-dvh min-[601px]:self-start min-[601px]:overflow-y-auto max-[600px]:border-r-0 max-[600px]:border-b max-[600px]:p-5">
         <Link
           className="inline-flex w-fit flex-col items-center gap-1"
           href="/"

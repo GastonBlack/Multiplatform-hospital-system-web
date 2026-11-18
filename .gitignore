@@ -8,3 +8,5 @@ coverage/
 *.pem
 *.pfx
 *.key
+.agents/
+skills-lock.json
